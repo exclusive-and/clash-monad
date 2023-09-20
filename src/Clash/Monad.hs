@@ -77,7 +77,7 @@ mealyClash (Clash ms) f !_ rsts inputs =
 
 data Register a = Register a (IORef a) (IORef a)
 
-instance Show a => Synchronous (Register a) where
+instance Synchronous (Register a) where
     type OutToken (Register a) = IORef a
     type InToken  (Register a) = IORef a
 
