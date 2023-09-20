@@ -10,15 +10,17 @@ topEntity
     :: Signal Bool
     -> Signal Bool
     -> Signal ()
-    -> Signal Int
+    -> Signal Bool
 
-topEntity = mealyClash (mkReg 0) blink
+topEntity = mealyClash (mkReg False) blink
 
-blink :: () -> Clash (Register Int) Int
+blink :: () -> Clash (Register Bool) Bool
 blink () = do
     rx <- get
     x <- readReg rx
-    writeReg rx $ x + 1
+    case x of
+        True  -> writeReg rx False
+        False -> writeReg rx True
     pure x
     
 get :: Clash s s
