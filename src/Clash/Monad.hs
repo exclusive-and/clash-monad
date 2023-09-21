@@ -1,31 +1,17 @@
 
-module Clash.Monad  ( Synchronous (..), Clash (..), mealyClash
+module Clash.Monad  ( Synchronous, Clash (..), mealyClash
                     , Register, mkReg, readReg, writeReg
                     , AsyncRam, mkAsyncRam, readRam, writeRam
                     ) where
 
+import Clash.Synchronous
+
 import Data.Foldable
 import Data.IORef
-import Data.Kind
 import Data.Primitive.Array
 import GHC.Exts
 import Silicon
 import System.IO.Unsafe
-
-
--- | Clock-synchronized state semantics.
-class Synchronous a where
-    type OutToken (a :: Type)
-    type InToken  (a :: Type)
-
-    outToken :: a -> OutToken a
-    inToken  :: a -> InToken  a
-    
-    -- | Clock ticks apply the write token to modify the read token.
-    tick  :: a -> OutToken a -> InToken a -> IO ()
-
-    -- | Resets the read and write tokens to their initial states.
-    reset :: a -> OutToken a -> InToken a -> IO ()
 
 
 -- | Experimental Clash Monad.

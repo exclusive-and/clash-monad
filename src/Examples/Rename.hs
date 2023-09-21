@@ -1,4 +1,5 @@
 
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -10,6 +11,7 @@ import Clash.Monad
 
 import Silicon
 import Data.Word
+import GHC.Generics
 
 
 topEntity
@@ -24,21 +26,9 @@ topEntity = mealyClash mkRename rename
 ---------------------------------------------------------------------
 
 data Rename = Rename (Register Tag) (AsyncRam Tag)
+    deriving Generic
 
-instance Synchronous Rename where
-    type OutToken Rename = (OutToken (Register Tag), OutToken (AsyncRam Tag))
-    type InToken  Rename = (InToken  (Register Tag), InToken  (AsyncRam Tag))
-    
-    outToken (Rename reg ram) = (outToken reg, outToken ram)
-    inToken  (Rename reg ram) = (inToken  reg, inToken  ram)
-    
-    tick (Rename reg ram) (reg_rtok, ram_rtok) (reg_wtok, ram_wtok) = do
-        tick reg reg_rtok reg_wtok
-        tick ram ram_rtok ram_wtok
-    
-    reset (Rename reg ram) (reg_rtok, ram_rtok) (reg_wtok, ram_wtok) = do
-        reset reg reg_rtok reg_wtok
-        reset ram ram_rtok ram_wtok
+instance Synchronous Rename
 
 mkRename :: Clash s Rename
 mkRename = do
