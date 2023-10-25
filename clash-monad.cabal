@@ -9,12 +9,28 @@ library
 
     default-extensions:
         BangPatterns
+        DefaultSignatures
+        EmptyCase
+        FlexibleContexts
+        FlexibleInstances
+        FunctionalDependencies
+        GADTs
+        GeneralizedNewtypeDeriving
         LambdaCase
+        MultiParamTypeClasses
         NoStarIsType
+        TupleSections
         TypeFamilies
         TypeOperators
 
     hs-source-dirs: src
+
+    exposed-modules:
+        HW
+        HW.HWM
+        HW.AsyncRAM
+        HW.Register
+        Data.Free
 
     ghc-options: -Wall -Wcompat
 
