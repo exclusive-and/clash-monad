@@ -19,33 +19,33 @@ newtype HWM a = HWM (Free Action a)
 -- ** Magic HWM Combinators
 
 instance Functor HWM where
-    fmap = mapHW#
+    fmap = fmapHW#
 
-mapHW# :: (a -> b) -> HWM a -> HWM b
-{-# NOINLINE mapHW# #-}
-mapHW# f (HWM ma) = HWM $ f <$> ma
+fmapHW# :: (a -> b) -> HWM a -> HWM b
+fmapHW# f (HWM ma) = HWM (fmap f ma)
+{-# NOINLINE fmapHW# #-}
 
 instance Applicative HWM where
     pure  = pureHW#
-    (<*>) = appHW#
+    (<*>) = apHW#
 
 pureHW# :: a -> HWM a
+pureHW# a = HWM (pure a)
 {-# NOINLINE pureHW# #-}
-pureHW# = HWM . pure
 
-appHW# :: HWM (a -> b) -> HWM a -> HWM b
-{-# NOINLINE appHW# #-}
-appHW# (HWM mf) (HWM mx) = HWM $ mf <*> mx
+apHW# :: HWM (a -> b) -> HWM a -> HWM b
+apHW# (HWM mf) (HWM mx) = HWM (mf <*> mx)
+{-# NOINLINE apHW# #-}
 
 instance Monad HWM where
     return = pure
     (>>=)  = bindHW#
 
 bindHW# :: HWM a -> (a -> HWM b) -> HWM b
-{-# NOINLINE bindHW# #-}
 bindHW# (HWM ma) k = HWM $ do
     a <- ma
     let HWM mb = k a in mb
+{-# NOINLINE bindHW# #-}
 
 
 -- ** Running HWM
