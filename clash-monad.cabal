@@ -23,6 +23,10 @@ library
         TypeFamilies
         TypeOperators
 
+    other-extensions:
+        MagicHash
+        RankNTypes
+
     hs-source-dirs: src
 
     exposed-modules:

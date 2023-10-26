@@ -1,4 +1,6 @@
 
+{-# LANGUAGE MagicHash #-}
+
 module HW.HWM where
 
 import Data.Free
@@ -10,7 +12,36 @@ import System.IO.Unsafe
 -- | Hardware Monad: describes the intra-cycle combinational logic
 -- and latch actions in a synchronous circuit.
 newtype HWM a = HWM (Free Action a)
-    deriving (Functor, Applicative, Monad)
+
+instance Functor HWM where
+    fmap = mapHW#
+
+mapHW# :: (a -> b) -> HWM a -> HWM b
+{-# NOINLINE mapHW# #-}
+mapHW# f (HWM ma) = HWM $ f <$> ma
+
+instance Applicative HWM where
+    pure  = pureHW#
+    (<*>) = appHW#
+
+pureHW# :: a -> HWM a
+{-# NOINLINE pureHW# #-}
+pureHW# = HWM . pure
+
+appHW# :: HWM (a -> b) -> HWM a -> HWM b
+{-# NOINLINE appHW# #-}
+appHW# (HWM mf) (HWM mx) = HWM $ mf <*> mx
+
+instance Monad HWM where
+    return = pure
+    (>>=)  = bindHW#
+
+bindHW# :: HWM a -> (a -> HWM b) -> HWM b
+{-# NOINLINE bindHW# #-}
+bindHW# (HWM ma) k = HWM $ do
+    a <- ma
+    let HWM mb = k a in mb
+
 
 -- | Compute some combinational logic. Collects all the latch actions
 -- so that all of them happen at once on the next clock tick.
@@ -35,6 +66,8 @@ mealyHW
     => HWM hwthing
     -> (hwthing -> i -> HWM o)
     -> Mealy i o
+
+{-# NOINLINE mealyHW #-}
 
 mealyHW ms mf !_ rs0 inputs =
     unsafePerformIO (runHW ms >>= go rs0 inputs)

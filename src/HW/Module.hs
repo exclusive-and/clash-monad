@@ -45,4 +45,7 @@ data HWMod a b where
 
 -- | Create a synchronous circuit from an encapsulated 'HWMod'.
 mealyHWMod :: HWMod a b -> Mealy a b
+
+{-# NOINLINE mealyHWMod #-}
+
 mealyHWMod (HWMod s0 f) = mealyHW s0 (\s1 a -> runHWST (f a) s1)
