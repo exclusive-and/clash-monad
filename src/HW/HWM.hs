@@ -15,6 +15,9 @@ import System.IO.Unsafe
 -- value of @a@ and some actions on latches.
 newtype HWM a = HWM (Free Action a)
 
+
+-- ** Magic HWM Combinators
+
 instance Functor HWM where
     fmap = mapHW#
 
@@ -44,6 +47,8 @@ bindHW# (HWM ma) k = HWM $ do
     a <- ma
     let HWM mb = k a in mb
 
+
+-- ** Running HWM
 
 -- | Run the computation described by 'HWM'. Not synthesizeable.
 runHW :: HWM a -> IO a
