@@ -9,8 +9,10 @@ import Silicon
 import System.IO.Unsafe
 
 
--- | Hardware Monad: describes the intra-cycle combinational logic
--- and latch actions in a synchronous circuit.
+-- * HWM
+
+-- | @'HWM' a@ describes a computation that results in a combinational
+-- value of @a@ and some actions on latches.
 newtype HWM a = HWM (Free Action a)
 
 instance Functor HWM where
@@ -43,10 +45,7 @@ bindHW# (HWM ma) k = HWM $ do
     let HWM mb = k a in mb
 
 
--- | Compute some combinational logic. Collects all the latch actions
--- so that all of them happen at once on the next clock tick.
--- 
--- NOTE: Not synthesizeable.
+-- | Run the computation described by 'HWM'. Not synthesizeable.
 runHW :: HWM a -> IO a
 runHW (HWM m) = go m
     where
@@ -57,10 +56,48 @@ runHW (HWM m) = go m
         Write s act -> act (writeToken s) >>= go
 
 
+-- * Actions on Latches
+
+-- | 
+class ClockSensitive hwthing => Latch hwthing where
+    type RTok hwthing
+    readToken :: hwthing -> RTok hwthing
+
+    type WTok hwthing
+    writeToken :: hwthing -> WTok hwthing
+
+
+-- | An action on a clock-sensitive latch. Not synthesizeable.
+data Action a where
+    -- | 'IO' escape hatch, needed for some simulation features.
+    ActIO :: IO a -> Action a
+    -- | Submit a read request to the latch.
+    Read  :: Latch hw => hw -> (RTok hw -> IO a) -> Action a
+    -- | Submit a write request to the latch.
+    Write :: Latch hw => hw -> (WTok hw -> IO a) -> Action a
+
+instance Functor Action where
+    fmap f = \case
+        ActIO   act -> ActIO (f <$> act)
+        Read  s act -> Read  s (fmap f . act)
+        Write s act -> Write s (fmap f . act)
+
+hoistIO :: IO a -> HWM a
+hoistIO = HWM . Free . ActIO . fmap Pure
+
+mkRead :: Latch hw => hw -> (RTok hw -> IO a) -> HWM a
+mkRead s r = HWM $ Free $ Read s (fmap Pure . r)
+
+mkWrite :: Latch hw => hw -> (WTok hw -> IO a) -> HWM a
+mkWrite s w = HWM $ Free $ Write s (fmap Pure . w)
+
+
+-- * Mealy Machines
+
 type Mealy i o = Signal Bool -> Signal Bool -> Signal i -> Signal o
 
--- | Create a synchronous circuit from a monadic description of a Mealy
--- machine's combinational logic.
+-- | Create a synchronous circuit from an 'HWM' description of a Mealy
+-- machine.
 mealyHW
     :: ClockSensitive hwthing
     => HWM hwthing
@@ -81,6 +118,8 @@ mealyHW ms mf !_ rs0 inputs =
         pure o
 
 
+-- * Clock Sensitivity
+
 -- | 
 class ClockSensitive hwthing where
     reset :: hwthing -> IO ()
@@ -97,45 +136,6 @@ class ClockSensitive hwthing where
 class GClockSensitive hwrep where
     greset :: hwrep x -> IO ()
     gtick  :: hwrep x -> IO ()
-
-
--- | Clock-sensitive components that have tokens for collecting read and
--- write actions generated during the clock cycle.
-class ClockSensitive hwthing => Latch hwthing where
-    type RTok hwthing
-    readToken :: hwthing -> RTok hwthing
-
-    type WTok hwthing
-    writeToken :: hwthing -> WTok hwthing
-
-
--- | The three types of clock-synchronized actions are:
--- 
---  [@ActIO@]: @IO@ escape hatch for creating tokens in the software
---             simulation. Not synthesizeable!
---  
---  [@Read@]: Read from a component with only its read token.
---  
---  [@Write@]: Collect a write to the component with only its write token.
-data Action a where
-    ActIO :: IO a -> Action a
-    Read  :: Latch hw => hw -> (RTok hw -> IO a) -> Action a
-    Write :: Latch hw => hw -> (WTok hw -> IO a) -> Action a
-
-instance Functor Action where
-    fmap f = \case
-        ActIO   act -> ActIO (f <$> act)
-        Read  s act -> Read  s (fmap f . act)
-        Write s act -> Write s (fmap f . act)
-
-hoistIO :: IO a -> HWM a
-hoistIO = HWM . Free . ActIO . fmap Pure
-
-mkRead :: Latch hw => hw -> (RTok hw -> IO a) -> HWM a
-mkRead s r = HWM $ Free $ Read s (fmap Pure . r)
-
-mkWrite :: Latch hw => hw -> (WTok hw -> IO a) -> HWM a
-mkWrite s w = HWM $ Free $ Write s (fmap Pure . w)
 
 
 instance GClockSensitive V1 where
